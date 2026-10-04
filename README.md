@@ -60,6 +60,35 @@ npm run build
 | 延误处置 | `delay` | 延误事件 | 事件编号、航班号、延误原因 |
 | 机坪安全巡查 | `apron` | 巡查记录 | 巡查编号、巡查区域、巡查人员 |
 | 保障资源调度 | `resplan` | 资源计划 | 计划编号、保障时段、机位需求 |
+| 地面保障计费结算 | `views/billing` | 协议/单价/上报/账单 | 见下节 |
+
+## 地面保障计费结算
+
+独立的结算工作台（导航「地面保障计费结算」，存储键 `airport-ground-ops:billing`，与通用台账
+`airport-ground-ops:entries` 分开），代码在 `frontend/src/data/billing/`：
+
+- **按航班归集**：班组服务上报（加油、廊桥、配餐……）按 航班+服务日期 归集成一张账单，逐项挂
+  服务单价与数量（`engine.ts` 的 `createBill` / `linesFromReports`）。
+- **重复上报去重**：同航班 + 同服务日期 + 同服务项 + 同机位档次视为一条，取上报最早的保留，
+  其余班组并入来源班组、只计一次金额（`dedupeReports`）。
+- **唯一口径**：机位档次系数、跨天计天方式（自然日含首尾 / 每满 24 小时）全局只有一份
+  （`BillingPolicy`）。**账单金额不落库**，每次查看、导出都按当前口径实时计算；口径改版本后，
+  已确认、归档的账单同样立即按新口径重算，账单上标「已重算」。
+- **协议有效期**：出账与提交审核都校验航司服务协议有效期，协议过期一律挡回，不许出账。
+- **状态机**：草稿 → 提交审核 → 确认账单 → 归档，只允许相邻流转，跳步一律挡回；审核可退回草稿。
+- **审核回写**：确认账单时把审核结论、关联账单、审核时间回写到保障资源调度同航班的资源缺口
+  清单；资源调度页的应收费用实时读计费引擎（`receivableForFlight`），两边永远同一套数。
+- **对账导出**：确认/归档账单可导出单航班结算单，并可按航司把多张账单打包成一份对账 CSV。
+
+核心规则有一组可执行校验：
+
+```bash
+cd frontend
+node -e "require('esbuild').build({entryPoints:['scripts/verify-billing.ts'],bundle:true,platform:'node',format:'esm',outfile:'/tmp/verify-billing.mjs'}).then(()=>{})" \
+  && node /tmp/verify-billing.mjs
+```
+
+（脚本使用相对 `scripts/` 的 `../src/...` 路径导入，需在 `frontend/` 目录下执行。）
 
 ## 约定
 
