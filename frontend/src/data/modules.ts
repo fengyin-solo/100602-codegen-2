@@ -200,6 +200,18 @@ export const MODULES: ModuleMeta[] = [
     actionTargets: {"提交审核": "待审核", "下发计划": "已下发", "作废计划": "已作废"},
     metrics: ["待编制计划", "已下发计划", "存在缺口的计划"],
   },
+  {
+    key: "billing",
+    name: "计费结算",
+    entity: "结算单",
+    desc: "按航班归集服务项、逐项挂单价与数量，统一计费口径出账，按航班或航司导出对账文件。",
+    fields: ["结算单号", "航班号", "航司代码", "服务项数", "去重剔除", "计费天数", "应收金额", "口径版本", "协议有效期", "关联计划", "出账日期"],
+    statuses: ["草稿", "提交审核", "确认账单", "已归档"],
+    actions: ["提交审核", "确认账单", "归档"],
+    actionTargets: {"提交审核": "提交审核", "确认账单": "确认账单", "归档": "已归档"},
+    strictFlow: true,
+    metrics: ["结算单总数", "应收总金额", "待审核账单"],
+  },
 ]
 
 export const MODULE_BY_KEY: Map<string, ModuleMeta> = new Map(

@@ -1,3 +1,4 @@
+import { writeBackResourceGap } from '@/api/billing-service'
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
@@ -43,6 +44,16 @@ export function runAction(key: string, id: number, action: string): ActionResult
   if (current === target) {
     return { ok: false, message: `${meta.entity}已经是「${target}」，不用重复操作` }
   }
+  if (meta.strictFlow) {
+    const currentIndex = meta.statuses.indexOf(current)
+    const targetIndex = meta.statuses.indexOf(target)
+    if (targetIndex !== currentIndex + 1) {
+      return {
+        ok: false,
+        message: `${meta.entity}状态只能按「${meta.statuses.join('→')}」依次流转，不许跳步（当前「${current}」）`,
+      }
+    }
+  }
   const lastStatus = meta.statuses[meta.statuses.length - 1]
   const updated: EntryRow = {
     ...rows[index],
@@ -53,6 +64,10 @@ export function runAction(key: string, id: number, action: string): ActionResult
   const next = [...rows]
   next[index] = updated
   saveRows(key, next)
+  // 账单确认后，审核结论（应收费用）回写资源缺口清单，保障资源调度看到的必须是同一个数。
+  if (key === 'billing' && action === '确认账单') {
+    writeBackResourceGap(updated)
+  }
   return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」` }
 }
 
